@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, OnApplicationBootstrap, UnauthorizedException } from "@nestjs/common";
+import { ConflictException, Injectable, NotFoundException, OnApplicationBootstrap, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -11,6 +11,7 @@ import { Member } from "./member.entity";
 const deriveKey = promisify(pbkdf2);
 const DEMO_EMAIL = "user@test.com";
 const DEMO_PASSWORD = "usertest555";
+const DEMO_USER_ID = "00000000-0000-4000-8000-000000000001";
 
 @Injectable()
 export class AuthService implements OnApplicationBootstrap {
@@ -21,9 +22,13 @@ export class AuthService implements OnApplicationBootstrap {
   ) {}
 
   async onApplicationBootstrap() {
-    if (this.config.get<string>("DEMO_ACCOUNT_ENABLED") === "false") return;
-    const existing = await this.members.findOneBy({ email: DEMO_EMAIL });
-    if (!existing) await this.members.save(this.members.create({ email: DEMO_EMAIL, passwordHash: await this.hash(DEMO_PASSWORD), isDemo: true }));
+    if (!this.demoEnabled()) return;
+    try {
+      const existing = await this.members.findOneBy({ email: DEMO_EMAIL });
+      if (!existing) await this.members.save(this.members.create({ id: DEMO_USER_ID, email: DEMO_EMAIL, passwordHash: await this.hash(DEMO_PASSWORD), isDemo: true }));
+    } catch (error) {
+      if (this.config.get<string>("NODE_ENV") === "production") throw error;
+    }
   }
 
   async register(dto: CredentialsDto) {
@@ -40,7 +45,12 @@ export class AuthService implements OnApplicationBootstrap {
   }
 
   async demo() {
-    return this.login({ email: DEMO_EMAIL, password: DEMO_PASSWORD });
+    if (!this.demoEnabled()) throw new NotFoundException();
+    return this.session({ id: DEMO_USER_ID, email: DEMO_EMAIL, isDemo: true } as Member);
+  }
+
+  private demoEnabled() {
+    return this.config.get<string>("NODE_ENV") !== "production" && this.config.get<string>("DEMO_ACCOUNT_ENABLED") !== "false";
   }
 
   private session(member: Member) {
