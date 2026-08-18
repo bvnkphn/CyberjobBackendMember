@@ -40,8 +40,25 @@ export class ProfilesService {
   }
 
   private calculateCompletion(profile: CandidateProfile) {
-    const sections: unknown[] = [profile.personal, profile.desiredJob, profile.educations, profile.workExperiences, profile.certificates, profile.languages, profile.otherSkills];
-    const completed = sections.filter((section) => Array.isArray(section) ? section.length > 0 : Object.keys(section ?? {}).length > 0).length;
-    return Math.round((completed / sections.length) * 100);
+    const requirements: Array<[unknown, string[]]> = [
+      [profile.personal, ["firstName", "lastName", "birthDay", "birthMonth", "birthYear", "phone", "address"]],
+      [profile.desiredJob, ["desiredPosition1", "desiredJobType1"]],
+      [profile.educations, ["education1Level", "education1Institution", "education1Faculty", "education1Year"]],
+      [profile.workExperiences, [
+        "workExperience1StartMonth", "workExperience1StartYear", "workExperience1EndMonth",
+        "workExperience1EndYear", "workExperience1Company", "workExperience1Position",
+      ]],
+      [profile.certificates, ["certificate1Title", "certificate1FileName"]],
+      [profile.languages, ["language1Name"]],
+      [profile.otherSkills, ["specialty1"]],
+    ];
+    const completed = requirements.filter(([section, fields]) => this.hasRequiredValues(section, fields)).length;
+    return Math.round((completed / requirements.length) * 100);
+  }
+
+  private hasRequiredValues(section: unknown, fields: string[]) {
+    if (!section || typeof section !== "object" || Array.isArray(section)) return false;
+    const data = section as Record<string, unknown>;
+    return fields.every((field) => String(data[field] ?? "").trim().length > 0);
   }
 }
