@@ -52,26 +52,21 @@ export class ProfilesService {
   }
 
   private calculateCompletion(profile: CandidateProfile) {
-    const requirements: Array<[unknown, string[]]> = [
-      [profile.personal, ["firstName", "lastName", "birthDay", "birthMonth", "birthYear", "phone", "address"]],
-      [profile.desiredJob, ["desiredPosition1", "desiredJobType1"]],
-      [profile.educations, ["education1Level", "education1Institution", "education1Faculty", "education1Year"]],
-      [profile.workExperiences, [
-        "workExperience1StartMonth", "workExperience1StartYear", "workExperience1EndMonth",
-        "workExperience1EndYear", "workExperience1Company", "workExperience1Position",
-      ]],
-      [profile.certificates, ["certificate1Title", "certificate1FileName"]],
-      [profile.languages, ["language1Name"]],
-      [profile.otherSkills, ["specialty1"]],
+    const requirements: Array<[unknown, Record<string, number>]> = [
+      [profile.personal, { firstName: 4, lastName: 4, gender: 3, birthDay: 3, birthMonth: 3, birthYear: 3, nationality: 3, phone: 5, address: 7 }],
+      [profile.desiredJob, { desiredPosition1: 8, desiredJobType1: 6, workplacePreference: 3, availableStartDate: 3 }],
+      [profile.educations, { education1Level: 4, education1Institution: 4, education1Faculty: 2, education1Year: 3, education1Major: 2 }],
+      [profile.workExperiences, { workExperience1StartMonth: 1, workExperience1StartYear: 1, workExperience1EndMonth: 1, workExperience1EndYear: 1, workExperience1Company: 3, workExperience1Position: 3 }],
+      [profile.languages, { language1Name: 2, language1Listening: 2, language1Speaking: 2, language1Reading: 2, language1Writing: 2 }],
+      [profile.certificates, { certificate1Title: 2.5, certificate1FileName: 2.5 }],
+      [profile.otherSkills, { specialty1: 3, projects: 2 }],
     ];
-    const completed = requirements.filter(([section, fields]) => this.hasRequiredValues(section, fields)).length;
-    return Math.round((completed / requirements.length) * 100);
-  }
-
-  private hasRequiredValues(section: unknown, fields: string[]) {
-    if (!section || typeof section !== "object" || Array.isArray(section)) return false;
-    const data = section as Record<string, unknown>;
-    return fields.every((field) => String(data[field] ?? "").trim().length > 0);
+    const score = requirements.reduce((total, [section, fields]) => {
+      if (!section || typeof section !== "object" || Array.isArray(section)) return total;
+      const data = section as Record<string, unknown>;
+      return total + Object.entries(fields).reduce((subtotal, [field, weight]) => subtotal + (String(data[field] ?? "").trim() ? weight : 0), 0);
+    }, 0);
+    return Math.round(score);
   }
 
   private stringValue(value: unknown) {
