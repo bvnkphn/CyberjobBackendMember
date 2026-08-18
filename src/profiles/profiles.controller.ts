@@ -5,7 +5,7 @@ import { SaveGateDto, SkipGateDto, UpdateProfileSectionDto } from "./profile.dto
 import { ProfileSection } from "./profile-section.enum";
 import { ProfilesService } from "./profiles.service";
 
-type AuthenticatedRequest = { user: { id: string } };
+type AuthenticatedRequest = { user: { id: string; email?: string } };
 
 class ProfileSectionParam {
   @IsEnum(ProfileSection)
@@ -29,7 +29,7 @@ export class ProfilesController {
 
   @Get("profile")
   getProfile(@Req() request: AuthenticatedRequest) {
-    return this.profiles.get(request.user.id);
+    return this.profiles.get(request.user.id, request.user.email);
   }
 
   @Patch("profile/:section")
