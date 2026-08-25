@@ -1,13 +1,134 @@
-stages: [verify, package]
-verify:
-  stage: verify
+# CyberJob Backend – GitLab CI/CD
+
+stages:
+  - quality
+  - build
+  - test
+  - package
+  - deploy
+
+variables:
+  npm_config_cache: '$CI_PROJECT_DIR/.npm'
+  PRISMA_SCHEMA: apps/api/prisma/schema.prisma
+
+default:
   image: node:22-alpine
-  script: ["npm ci --cache .npm --prefer-offline", "npm run build"]
-docker:
+  cache:
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - .npm/
+      - node_modules/
+  before_script:
+    - apk add --no-cache openssl
+    - npm ci --prefer-offline --no-audit --no-fund
+
+typecheck:
+  stage: quality
+  script:
+    - npm run typecheck
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: $CI_COMMIT_BRANCH
+
+prisma-validate:
+  stage: quality
+  script:
+    - npx prisma validate --schema $PRISMA_SCHEMA
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: $CI_COMMIT_BRANCH
+
+build:
+  stage: build
+  script:
+    - npm run build
+  artifacts:
+    expire_in: 1 day
+    paths:
+      - apps/api/dist
+      - packages/shared/dist
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: $CI_COMMIT_BRANCH
+
+# ยก PostgreSQL จริงขึ้นมาแล้วยิง API ทดสอบ
+api-smoke-test:
+  stage: test
+  needs: ['build']
+  services:
+    - name: postgres:16-alpine
+      alias: postgres
+  variables:
+    POSTGRES_USER: postgres
+    POSTGRES_PASSWORD: postgres
+    POSTGRES_DB: cyberjob_test
+    DATABASE_URL: 'postgresql://postgres:postgres@postgres:5432/cyberjob_test?schema=public'
+    JWT_ACCESS_SECRET: ci-access-secret
+    JWT_ACCESS_TTL: 15m
+    JWT_REFRESH_TTL_DAYS: 30
+    PORT: '4000'
+  script:
+    - apk add --no-cache curl
+    - npx prisma db push --schema $PRISMA_SCHEMA --skip-generate
+    - npx prisma generate --schema $PRISMA_SCHEMA
+    - npm run db:seed
+    - node apps/api/dist/main.js & echo $! > /tmp/api.pid
+    - |
+      for i in $(seq 1 40); do
+        curl -sf http://127.0.0.1:4000/api/meta/provinces > /dev/null && break
+        sleep 1
+      done
+    - node scripts/smoke.mjs http://127.0.0.1:4000/api
+    - kill "$(cat /tmp/api.pid)" || true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: $CI_COMMIT_BRANCH
+
+build-image:
   stage: package
-  image: docker:27
-  services: [docker:27-dind]
-  variables: { DOCKER_TLS_CERTDIR: "/certs" }
-  script: ["docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY", "docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA .", "docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA"]
+  image: docker:27-cli
+  services:
+    - docker:27-dind
+  variables:
+    DOCKER_TLS_CERTDIR: '/certs'
+  cache: {}
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+  script:
+    - docker build -f apps/api/Dockerfile
+      -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
+      -t "$CI_REGISTRY_IMAGE:latest" .
+    - docker push "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
+    - docker push "$CI_REGISTRY_IMAGE:latest"
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH == 'develop'
+    - if: $CI_COMMIT_TAG
+
+# ต้องตั้ง CI/CD variables: SSH_PRIVATE_KEY (File), DEPLOY_HOST, DEPLOY_PATH
+deploy-production:
+  stage: deploy
+  image: alpine:3.20
+  cache: {}
+  before_script:
+    - apk add --no-cache openssh-client
+    - eval "$(ssh-agent -s)"
+    - chmod 600 "$SSH_PRIVATE_KEY" && ssh-add "$SSH_PRIVATE_KEY"
+    - mkdir -p ~/.ssh && ssh-keyscan -H "${DEPLOY_HOST#*@}" >> ~/.ssh/known_hosts
+  script:
+    - |
+      ssh "$DEPLOY_HOST" "
+        set -e
+        cd $DEPLOY_PATH
+        echo '$CI_REGISTRY_PASSWORD' | docker login -u '$CI_REGISTRY_USER' --password-stdin '$CI_REGISTRY'
+        docker compose pull
+        docker compose up -d --remove-orphans
+        docker image prune -f
+      "
+  environment:
+    name: production
+  when: manual
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
