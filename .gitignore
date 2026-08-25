@@ -1,6 +1,10 @@
 node_modules/
 dist/
+.next/
+out/
+build/
+*.tsbuildinfo
 .env
-coverage/
+.env.local
+.DS_Store
 npm-debug.log*
-.npm-cache/

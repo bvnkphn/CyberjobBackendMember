@@ -1,0 +1,242 @@
+// CyberJob – PostgreSQL schema
+// สร้าง client:   npm run prisma:generate -w @cyberjob/api
+// สร้าง migration: npm run prisma:migrate -w @cyberjob/api
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------------------
+// Enum
+// ------------------------------------------------------------------
+
+/// รูปแบบการทำงาน
+enum WorkStyle {
+  ONSITE
+  HYBRID
+  REMOTE
+}
+
+/// ประเภทงาน
+enum EmploymentType {
+  FULLTIME
+  PARTTIME
+  CONTRACT
+  TEMPORARY
+  INTERNSHIP
+}
+
+/// ประสบการณ์ทำงาน
+enum ExperienceLevel {
+  NONE // 0 ปี
+  ONE_TWO // 1-2 ปี
+  THREE_FIVE // 3-5 ปี
+  SIX_TEN // 6-10 ปี
+  TEN_PLUS // 10 ปีขึ้นไป
+}
+
+/// ช่องทางที่ผู้ใช้สมัครเข้ามา
+enum AuthProvider {
+  LOCAL
+  GOOGLE
+}
+
+enum UserRole {
+  JOBSEEKER
+  EMPLOYER
+  ADMIN
+}
+
+enum ApplicationStatus {
+  SUBMITTED
+  REVIEWING
+  INTERVIEW
+  REJECTED
+  HIRED
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  CLOSED
+}
+
+// ------------------------------------------------------------------
+// บริษัทและประกาศงาน
+// ------------------------------------------------------------------
+
+model Company {
+  id            String  @id @default(cuid())
+  slug          String  @unique
+  name          String
+  legalName     String
+  logoText      String
+  logoColor     String
+  verified      Boolean @default(false)
+  businessType  String
+  employeeCount String?
+  about         String
+
+  // ข้อมูลติดต่อ
+  email   String
+  phone   String
+  website String
+  address String
+
+  province String
+  district String?
+
+  coverImage String?
+  gallery    String[] @default([])
+  lat        Float?
+  lng        Float?
+
+  jobs Job[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([province])
+}
+
+model Job {
+  id        String  @id @default(cuid())
+  slug      String  @unique
+  title     String
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  category    String
+  subcategory String?
+  province    String
+  district    String?
+
+  workStyle       WorkStyle
+  employmentType  EmploymentType
+  experienceLevel ExperienceLevel
+
+  salaryMin        Int
+  salaryMax        Int
+  salaryNegotiable Boolean @default(false)
+
+  postedAt DateTime
+  isUrgent Boolean  @default(false)
+  isActive Boolean  @default(true)
+
+  summary     String
+  description String
+
+  requirements             String[] @default([])
+  additionalQualifications String[] @default([])
+  employerAnswers          String[] @default([])
+  benefits                 String[] @default([])
+  skills                   String[] @default([])
+
+  openings   Int     @default(1)
+  coverImage String?
+
+  bookmarks    Bookmark[]
+  applications Application[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([category])
+  @@index([province])
+  @@index([postedAt])
+  @@index([salaryMin, salaryMax])
+}
+
+// ------------------------------------------------------------------
+// ผู้ใช้และการยืนยันตัวตน
+// ------------------------------------------------------------------
+
+model User {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  /// เป็น null เมื่อสมัครผ่าน OAuth
+  passwordHash String?
+  name         String
+  avatarUrl    String?
+  provider     AuthProvider @default(LOCAL)
+  /// id ของผู้ใช้ที่ฝั่ง OAuth provider
+  providerId   String?
+  role         UserRole     @default(JOBSEEKER)
+
+  bookmarks     Bookmark[]
+  applications  Application[]
+  refreshTokens RefreshToken[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([provider, providerId])
+}
+
+/// เก็บเฉพาะ hash ของ refresh token เพื่อให้เพิกถอนได้
+model RefreshToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  revokedAt DateTime?
+  userAgent String?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+// ------------------------------------------------------------------
+// งานที่บันทึกไว้ และการสมัครงาน
+// ------------------------------------------------------------------
+
+/// Feature 7.1 – ผู้สมัครบันทึกไว้ได้ว่าสนใจงานไหน
+model Bookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  jobId     String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, jobId])
+  @@index([userId])
+}
+
+model Application {
+  id          String            @id @default(cuid())
+  userId      String
+  jobId       String
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job         Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  status      ApplicationStatus @default(SUBMITTED)
+  coverLetter String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@unique([userId, jobId])
+  @@index([userId])
+  @@index([jobId])
+}
+
+// ------------------------------------------------------------------
+// Contact Support (Feature 3.4)
+// ------------------------------------------------------------------
+
+model SupportTicket {
+  id        String       @id @default(cuid())
+  ref       String       @unique
+  name      String
+  email     String
+  topic     String
+  message   String
+  status    TicketStatus @default(OPEN)
+  createdAt DateTime     @default(now())
+}
