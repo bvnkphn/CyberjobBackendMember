@@ -7,6 +7,7 @@ import { JobsModule } from './jobs/jobs.module';
 import { MeModule } from './me/me.module';
 import { MetaModule } from './meta/meta.module';
 import { SupportModule } from './support/support.module';
+import { HealthController } from './health.controller';
 
 @Module({
   imports: [
@@ -19,5 +20,6 @@ import { SupportModule } from './support/support.module';
     MetaModule,
     SupportModule,
   ],
+  controllers: [HealthController],
 })
 export class AppModule {}

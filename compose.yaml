@@ -1,12 +1,28 @@
 services:
   api:
     build: .
-    env_file: .env
+    environment:
+      PORT: ${PORT:-3003}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-cyberjob}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-cyberjob_member}?schema=public
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:3103}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-local-development-secret-change-before-production}
+      JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-15m}
+      JWT_REFRESH_TTL_DAYS: ${JWT_REFRESH_TTL_DAYS:-30}
+      SEED_ON_START: ${SEED_ON_START:-false}
+      COOKIE_SAMESITE: ${COOKIE_SAMESITE:-lax}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
     ports: ["3003:3003"]
     depends_on: { postgres: { condition: service_healthy } }
   postgres:
     image: postgres:17-alpine
-    environment: { POSTGRES_USER: cyberjob, POSTGRES_PASSWORD: change-me, POSTGRES_DB: cyberjob_member }
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cyberjob}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      POSTGRES_DB: ${POSTGRES_DB:-cyberjob_member}
     volumes: [postgres_data:/var/lib/postgresql/data]
-    healthcheck: { test: ["CMD-SHELL", "pg_isready -U cyberjob -d cyberjob_member"], interval: 5s, timeout: 5s, retries: 10 }
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cyberjob} -d ${POSTGRES_DB:-cyberjob_member}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 volumes: { postgres_data: {} }
