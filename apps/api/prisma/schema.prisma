@@ -168,15 +168,31 @@ model User {
   /// id ของผู้ใช้ที่ฝั่ง OAuth provider
   providerId   String?
   role         UserRole     @default(JOBSEEKER)
+  gateCompleted Boolean     @default(false)
 
   bookmarks     Bookmark[]
   applications  Application[]
   refreshTokens RefreshToken[]
+  profile       CandidateProfile?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([provider, providerId])
+}
+
+model CandidateProfile {
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstName            String?
+  lastName             String?
+  address              String?
+  desiredJobCategories String[] @default([])
+  privacy              String   @default("private")
+  sections             Json     @default("{}")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 }
 
 /// เก็บเฉพาะ hash ของ refresh token เพื่อให้เพิกถอนได้

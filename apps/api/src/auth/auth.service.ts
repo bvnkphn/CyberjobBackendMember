@@ -36,6 +36,7 @@ export class AuthService {
       avatarUrl: user.avatarUrl ?? undefined,
       role: user.role,
       provider: user.provider,
+      gateCompleted: user.gateCompleted,
       createdAt: user.createdAt.toISOString(),
     };
   }

@@ -181,6 +181,7 @@ export interface AuthUser {
   avatarUrl?: string;
   role: UserRole;
   provider: AuthProviderName;
+  gateCompleted: boolean;
   createdAt: string;
 }
 
