@@ -113,7 +113,7 @@ async function main() {
   }
   console.log(`  ประกาศงาน: ${MOCK_JOBS.length} รายการ`);
 
-  /* ---------------- ผู้ใช้ตัวอย่าง ---------------- */
+  /* ---------------- ผู้ใช้ตัวอย่าง (เฉพาะเมื่อเปิดใช้โดยชัดเจน) ---------------- */
   const demoUsers = [
     {
       email: 'demo@cyberjob.co.th',
@@ -129,20 +129,24 @@ async function main() {
     },
   ];
 
-  for (const user of demoUsers) {
-    const passwordHash = await bcrypt.hash(user.password, 10);
-    await prisma.user.upsert({
-      where: { email: user.email },
-      update: { name: user.name, role: user.role },
-      create: {
-        email: user.email,
-        name: user.name,
-        passwordHash,
-        role: user.role,
-      },
-    });
+  if (process.env.SEED_DEMO_USERS === 'true') {
+    for (const user of demoUsers) {
+      const passwordHash = await bcrypt.hash(user.password, 10);
+      await prisma.user.upsert({
+        where: { email: user.email },
+        update: { name: user.name, role: user.role },
+        create: {
+          email: user.email,
+          name: user.name,
+          passwordHash,
+          role: user.role,
+        },
+      });
+    }
+    console.log(`  ผู้ใช้: ${demoUsers.length} รายการ (บัญชีทดสอบ)`);
+  } else {
+    console.log('  ผู้ใช้: ข้ามบัญชีทดสอบ (ตั้ง SEED_DEMO_USERS=true เพื่อเปิดใช้)');
   }
-  console.log(`  ผู้ใช้: ${demoUsers.length} รายการ (รหัสผ่านดูใน prisma/seed.ts)`);
 
   console.log('seed เสร็จเรียบร้อย');
 }
