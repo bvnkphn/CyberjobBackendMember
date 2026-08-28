@@ -9,7 +9,15 @@ export class GateService {
   async save(userId: string, dto: SaveGateDto) {
     await this.assertJobseeker(userId);
     const [, profile] = await this.prisma.$transaction([
-      this.prisma.user.update({ where: { id: userId }, data: { gateCompleted: true, name: `${dto.firstName} ${dto.lastName}`.trim() } }),
+      this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          gateCompleted: true,
+          gateSkipped: false,
+          gateCompletedAt: new Date(),
+          name: `${dto.firstName} ${dto.lastName}`.trim(),
+        },
+      }),
       this.prisma.candidateProfile.upsert({
         where: { userId },
         create: { userId, ...dto },
@@ -22,7 +30,10 @@ export class GateService {
   async skip(userId: string, privacy = 'private') {
     await this.assertJobseeker(userId);
     await this.prisma.$transaction([
-      this.prisma.user.update({ where: { id: userId }, data: { gateCompleted: true } }),
+      this.prisma.user.update({
+        where: { id: userId },
+        data: { gateCompleted: true, gateSkipped: true, gateCompletedAt: new Date() },
+      }),
       this.prisma.candidateProfile.upsert({ where: { userId }, create: { userId, privacy }, update: { privacy } }),
     ]);
     return { ok: true as const, gateCompleted: true };
@@ -38,6 +49,8 @@ export class GateService {
       desiredJobCategories: row?.profile?.desiredJobCategories ?? [],
       privacy: row?.profile?.privacy === 'public' ? 'public' : 'private',
       gateCompleted: row?.gateCompleted ?? false,
+      gateSkipped: row?.gateSkipped ?? false,
+      gateCompletedAt: row?.gateCompletedAt?.toISOString() ?? null,
     };
   }
 

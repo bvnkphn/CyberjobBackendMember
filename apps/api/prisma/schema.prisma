@@ -170,6 +170,8 @@ model User {
   providerId   String?
   role         UserRole     @default(JOBSEEKER)
   gateCompleted Boolean     @default(false)
+  gateSkipped   Boolean     @default(false)
+  gateCompletedAt DateTime?
 
   bookmarks     Bookmark[]
   applications  Application[]

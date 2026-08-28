@@ -1,10 +1,19 @@
-import { IsArray, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  IsArray,
+  IsIn,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 
 export class SaveGateDto {
-  @IsString() @MaxLength(80) firstName!: string;
-  @IsString() @MaxLength(80) lastName!: string;
-  @IsString() @MaxLength(500) address!: string;
-  @IsArray() @IsString({ each: true }) desiredJobCategories!: string[];
+  @IsString() @IsNotEmpty() @MaxLength(80) firstName!: string;
+  @IsString() @IsNotEmpty() @MaxLength(80) lastName!: string;
+  @IsString() @IsNotEmpty() @MaxLength(500) address!: string;
+  @IsArray() @ArrayMinSize(1) @ArrayMaxSize(2) @IsString({ each: true }) desiredJobCategories!: string[];
   @IsIn(['public', 'private']) privacy!: 'public' | 'private';
 }
 
