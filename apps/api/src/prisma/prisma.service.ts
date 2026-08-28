@@ -18,8 +18,16 @@ export class PrismaService
   }
 
   async onModuleInit(): Promise<void> {
-    await this.$connect();
-    this.logger.log('เชื่อมต่อ PostgreSQL สำเร็จ');
+    try {
+      await this.$connect();
+      this.logger.log('เชื่อมต่อ PostgreSQL สำเร็จ');
+    } catch (error) {
+      // ให้ API และ /api/health เริ่มทำงานได้เพื่อรายงานสถานะ แม้ฐานข้อมูล
+      // จะติดต่อไม่ได้ชั่วคราว Prisma จะลองเชื่อมต่อใหม่เมื่อมี query แรก
+      this.logger.error(
+        `ยังเชื่อมต่อ PostgreSQL ไม่สำเร็จตอนเริ่มระบบ: ${error instanceof Error ? error.message : 'unknown error'}`,
+      );
+    }
   }
 
   async onModuleDestroy(): Promise<void> {

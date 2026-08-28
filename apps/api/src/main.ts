@@ -7,6 +7,15 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // Hostinger ตรวจ root path ระหว่างเริ่ม process จึงต้องตอบ 200 โดยไม่ผ่าน API prefix
+  app.getHttpAdapter().get('/', (_req: unknown, res: { json: (body: unknown) => void }) => {
+    res.json({
+      status: 'ok',
+      service: 'cyberjob-backend-member',
+      api: '/api',
+    });
+  });
+
   app.setGlobalPrefix('api');
   app.use(cookieParser());
 
@@ -35,4 +44,10 @@ async function bootstrap() {
   new Logger('Bootstrap').log(`CyberJob API พร้อมใช้งานที่ http://localhost:${port}/api`);
 }
 
-void bootstrap();
+bootstrap().catch((error: unknown) => {
+  const logger = new Logger('Bootstrap');
+  logger.error(
+    `เริ่ม CyberJob API ไม่สำเร็จ: ${error instanceof Error ? error.stack ?? error.message : String(error)}`,
+  );
+  process.exitCode = 1;
+});
