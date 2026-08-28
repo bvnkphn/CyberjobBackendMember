@@ -172,7 +172,6 @@ CI/CD variables ที่ต้องตั้งก่อน deploy: `SSH_PRIVA
 
 ## ต่อฐานข้อมูลจริง
 
-ข้อมูล seed อ่านจาก `packages/shared/src/mock-jobs.ts`Copy-Item apps/api/.env.example apps/api/.env
-npm run db:migrate
+ข้อมูล seed อ่านจาก `packages/shared/src/mock-jobs.ts`
 ส่วน logic ทั้งหมด query ผ่าน Prisma อยู่แล้ว — แก้ที่ `apps/api/src/jobs/jobs.service.ts`
 และ `apps/api/src/companies/companies.service.ts` ได้โดยตรง
