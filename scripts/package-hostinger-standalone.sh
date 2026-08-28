@@ -13,6 +13,8 @@ cp "$repo_dir/deploy/hostinger-standalone/package.json" "$stage_dir/package.json
 cp "$repo_dir/deploy/hostinger-standalone/tsconfig.json" "$stage_dir/tsconfig.json"
 cp "$repo_dir/deploy/hostinger-standalone/nest-cli.json" "$stage_dir/nest-cli.json"
 cp "$repo_dir/deploy/hostinger-standalone/server.cjs" "$stage_dir/server.cjs"
+mkdir -p "$stage_dir/scripts"
+cp "$repo_dir/deploy/hostinger-standalone/embed-shared.cjs" "$stage_dir/scripts/embed-shared.cjs"
 
 (cd "$stage_dir" && zip -qr "$output_path" . -x 'shared/dist/*')
 printf '%s\n' "$output_path"

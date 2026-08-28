@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "npm run build --prefix shared && prisma generate && nest build",
+    "build": "npm run build --prefix shared && prisma generate && nest build && node scripts/embed-shared.cjs",
     "start": "node dist/main.js"
   },
   "dependencies": {
