@@ -1,4 +1,9 @@
-import { IsEmail, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { IsEmail, IsEnum, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+
+export enum RegistrationRole {
+  JOBSEEKER = 'JOBSEEKER',
+  EMPLOYER = 'EMPLOYER',
+}
 
 export class RegisterDto {
   @IsEmail({}, { message: 'รูปแบบอีเมลไม่ถูกต้อง' })
@@ -15,6 +20,10 @@ export class RegisterDto {
   @MinLength(2, { message: 'กรุณาระบุชื่อ' })
   @MaxLength(120)
   name!: string;
+
+  @IsEnum(RegistrationRole, { message: 'ประเภทบัญชีไม่ถูกต้อง' })
+  @IsOptional()
+  role: RegistrationRole = RegistrationRole.JOBSEEKER;
 }
 
 export class LoginDto {

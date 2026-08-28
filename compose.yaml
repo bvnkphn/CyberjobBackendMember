@@ -4,7 +4,7 @@ services:
     environment:
       PORT: ${PORT:-3003}
       DATABASE_URL: postgresql://${POSTGRES_USER:-cyberjob}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-cyberjob_member}?schema=public
-      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:3103}
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:3103,http://localhost:3102}
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-local-development-secret-change-before-production}
       JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-15m}
       JWT_REFRESH_TTL_DAYS: ${JWT_REFRESH_TTL_DAYS:-30}

@@ -76,7 +76,7 @@ async function main() {
   const register = await json('/auth/register', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password: 'Passw0rd!', name: 'Smoke Test' }),
+    body: JSON.stringify({ email, password: 'Passw0rd!', name: 'Smoke Test', role: 'JOBSEEKER' }),
   });
   check('สมัครสมาชิกสำเร็จ', register.status === 201, `(${register.status})`);
   check('ได้ accessToken', Boolean(register.body?.accessToken));

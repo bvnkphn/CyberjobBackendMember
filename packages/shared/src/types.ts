@@ -197,6 +197,7 @@ export interface RegisterRequest {
   email: string;
   password: string;
   name: string;
+  role: Extract<UserRole, 'JOBSEEKER' | 'EMPLOYER'>;
 }
 
 export interface LoginRequest {

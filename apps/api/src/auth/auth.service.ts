@@ -130,6 +130,7 @@ export class AuthService {
           email,
           name: dto.name.trim(),
           passwordHash: await bcrypt.hash(dto.password, BCRYPT_ROUNDS),
+          role: dto.role,
         },
       });
     } catch (error) {
