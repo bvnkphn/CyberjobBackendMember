@@ -2,11 +2,18 @@
  * เติมข้อมูลตั้งต้นลง PostgreSQL จากชุดข้อมูลตัวอย่างใน @cyberjob/shared
  * รัน:  npm run db:seed -w @cyberjob/api
  */
+import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { MOCK_COMPANIES, MOCK_JOBS } from '@cyberjob/shared';
 
-const prisma = new PrismaClient();
+// schema.prisma ใช้ engineType = "client" ซึ่งบังคับให้ต้องส่ง driver adapter
+// เหมือนที่ PrismaService ทำ มิฉะนั้นจะขึ้น P2038 "Missing configured driver adapter"
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  throw new Error('DATABASE_URL is required');
+}
+const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
 
 /**
  * ตารางแปลง enum – เขียนซ้ำไว้ในไฟล์นี้โดยตั้งใจ

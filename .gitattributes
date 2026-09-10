@@ -1,0 +1,9 @@
+# Keep POSIX scripts LF even when checked out on Windows (core.autocrlf=true).
+# A CRLF shebang makes the Docker entrypoint fail with
+# "exec ./docker-entrypoint.sh: no such file or directory".
+* text=auto eol=lf
+*.sh text eol=lf
+*.ps1 text eol=crlf
+*.png binary
+*.jpg binary
+*.ico binary
