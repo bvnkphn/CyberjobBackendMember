@@ -20,7 +20,8 @@ export class MeService {
   }
 
   async addBookmark(userId: string, jobId: string): Promise<{ ok: true }> {
-    const job = await this.prisma.job.findUnique({ where: { id: jobId } });
+    // ประกาศที่ผู้ดูแลระบบลบแล้ว (soft delete) ยังมีแถวอยู่ ต้องถือว่าไม่มีงานนี้
+    const job = await this.prisma.job.findFirst({ where: { id: jobId, deletedAt: null } });
     if (!job) throw new NotFoundException('ไม่พบประกาศงานนี้');
 
     await this.prisma.bookmark.upsert({
@@ -43,7 +44,7 @@ export class MeService {
   async syncBookmarks(userId: string, jobIds: string[]): Promise<Job[]> {
     if (jobIds.length) {
       const existing = await this.prisma.job.findMany({
-        where: { id: { in: jobIds } },
+        where: { id: { in: jobIds }, deletedAt: null },
         select: { id: true },
       });
 
@@ -78,8 +79,8 @@ export class MeService {
     jobId: string,
     coverLetter?: string,
   ): Promise<JobApplication> {
-    const job = await this.prisma.job.findUnique({
-      where: { id: jobId },
+    const job = await this.prisma.job.findFirst({
+      where: { id: jobId, deletedAt: null },
       include: { company: true },
     });
     if (!job) throw new NotFoundException('ไม่พบประกาศงานนี้');

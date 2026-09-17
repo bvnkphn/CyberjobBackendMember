@@ -47,6 +47,12 @@ enum AuthProvider {
   GOOGLE
 }
 
+/// แหล่งที่มาของผู้สมัคร – ใช้ในหลังบ้าน Admin (Feature 3)
+enum CandidateSource {
+  CYBERPAY_INTERN
+  OUTSIDER
+}
+
 enum UserRole {
   JOBSEEKER
   EMPLOYER
@@ -128,6 +134,8 @@ model Job {
   postedAt DateTime
   isUrgent Boolean  @default(false)
   isActive Boolean  @default(true)
+  /// ลบโดยผู้ดูแลระบบ – เก็บแถวไว้เพื่อไม่ให้ประวัติการสมัครและบุ๊กมาร์กหายตาม
+  deletedAt DateTime?
 
   summary     String
   description String
@@ -160,6 +168,8 @@ model Job {
 
 model User {
   id           String       @id @default(cuid())
+  /// รหัสที่คนอ่านได้ เช่น CJ-0008 – ฐานข้อมูลออกให้เองจาก sequence
+  code         String       @unique @default(dbgenerated("next_user_code()"))
   email        String       @unique
   /// เป็น null เมื่อสมัครผ่าน OAuth
   passwordHash String?
@@ -169,6 +179,7 @@ model User {
   /// id ของผู้ใช้ที่ฝั่ง OAuth provider
   providerId   String?
   role         UserRole     @default(JOBSEEKER)
+  candidateSource CandidateSource @default(OUTSIDER)
   gateCompleted Boolean     @default(false)
   gateSkipped   Boolean     @default(false)
   gateCompletedAt DateTime?
