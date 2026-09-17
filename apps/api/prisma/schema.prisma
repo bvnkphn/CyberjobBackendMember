@@ -73,6 +73,61 @@ enum TicketStatus {
   CLOSED
 }
 
+/// รูปแบบองค์กร (Owner Feature 3.1)
+enum CompanyType {
+  PRIVATE
+  GOVERNMENT
+  STATE_ENTERPRISE
+}
+
+/// สถานะการยืนยันบริษัทจากหน้า Gate ของผู้ประกอบการ (Owner Feature 8)
+enum VerificationStatus {
+  NOT_SUBMITTED
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/// สถานะประกาศงานฝั่งผู้ประกอบการ – isActive ยังเป็นตัวตัดสินว่าหน้าเว็บเห็นหรือไม่
+enum JobStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+}
+
+/// ประเภทคำตอบของคำถามคัดกรอง (Owner Feature 4.2.1)
+enum QuestionType {
+  SINGLE
+  DATE
+  SHORT
+  MULTI
+  LONG
+}
+
+enum InvitationStatus {
+  SENT
+  ACCEPTED
+  DECLINED
+}
+
+/// แพ็กเกจของบริษัท (Owner Feature 9)
+enum PackagePlan {
+  FREE
+  GOLD
+  PLATINUM
+}
+
+enum PaymentMethod {
+  PROMPTPAY
+  BANK_TRANSFER
+}
+
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 // ------------------------------------------------------------------
 // บริษัทและประกาศงาน
 // ------------------------------------------------------------------
@@ -103,7 +158,29 @@ model Company {
   lat        Float?
   lng        Float?
 
-  jobs Job[]
+  /// บัญชีผู้ประกอบการที่ดูแลบริษัทนี้ – บริษัทตัวอย่างจาก seed ไม่มีเจ้าของ
+  ownerId            String?            @unique
+  owner              User?              @relation("CompanyOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  companyType        CompanyType        @default(PRIVATE)
+  registrationNumber String?
+  contactName        String?
+  contactPosition    String?
+  contactPhone       String?
+  logoUrl            String?
+  mapUrl             String?
+  /// false = ซ่อนหน้าบริษัทจากการค้นหาบนเว็บ (ตั้งค่าความเป็นส่วนตัว)
+  isPublic           Boolean            @default(true)
+  verificationStatus VerificationStatus @default(NOT_SUBMITTED)
+  verificationSubmittedAt DateTime?
+  /// เอกสารยืนยันบริษัท { certificate: [{ name, path, size, mimeType }], directorId, workplace, vat }
+  documents          Json               @default("{}")
+  plan               PackagePlan        @default(FREE)
+  planExpiresAt      DateTime?
+
+  jobs               Job[]
+  candidateBookmarks CandidateBookmark[]
+  invitations        Invitation[]
+  payments           SubscriptionPayment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -149,8 +226,16 @@ model Job {
   openings   Int     @default(1)
   coverImage String?
 
+  /// สถานะที่ผู้ประกอบการเห็น – ร่าง/เผยแพร่/ปิดรับสมัคร
+  status          JobStatus @default(PUBLISHED)
+  department      String?
+  /// จำนวนปีประสบการณ์ที่ต้องการแบบตัวเลข (experienceLevel เป็นช่วงสำหรับตัวกรองหน้าเว็บ)
+  experienceYears Int?
+
   bookmarks    Bookmark[]
   applications Application[]
+  questions    JobQuestion[]
+  invitations  Invitation[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -188,6 +273,10 @@ model User {
   applications  Application[]
   refreshTokens RefreshToken[]
   profile       CandidateProfile?
+
+  ownedCompany       Company?            @relation("CompanyOwner")
+  bookmarkedByCompanies CandidateBookmark[]
+  invitations        Invitation[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -248,12 +337,95 @@ model Application {
   job         Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
   status      ApplicationStatus @default(SUBMITTED)
   coverLetter String?
+  answers     ApplicationAnswer[]
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
   @@unique([userId, jobId])
   @@index([userId])
   @@index([jobId])
+}
+
+/// คำถามคัดกรองที่ผู้ประกอบการตั้งไว้ในประกาศงาน (Owner Feature 4.2.1)
+model JobQuestion {
+  id       String       @id @default(cuid())
+  jobId    String
+  job      Job          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  position Int
+  type     QuestionType
+  text     String
+  options  String[]     @default([])
+  required Boolean      @default(true)
+  answers  ApplicationAnswer[]
+
+  @@index([jobId])
+}
+
+/// คำตอบของผู้สมัคร – เก็บข้อความคำถามไว้ด้วย เผื่อผู้ประกอบการแก้คำถามภายหลัง
+model ApplicationAnswer {
+  id            String       @id @default(cuid())
+  applicationId String
+  application   Application  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  questionId    String?
+  question      JobQuestion? @relation(fields: [questionId], references: [id], onDelete: SetNull)
+  questionText  String
+  questionType  QuestionType
+  /// string สำหรับคำตอบเดียว หรือ string[] สำหรับเลือกหลายข้อ
+  answer        Json
+  position      Int          @default(0)
+  createdAt     DateTime     @default(now())
+
+  @@index([applicationId])
+}
+
+/// ผู้ประกอบการบันทึกผู้สมัครที่สนใจ (Owner Feature 2.3) – คนละตารางกับ Bookmark งานของผู้หางาน
+model CandidateBookmark {
+  id          String   @id @default(cuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  candidateId String
+  candidate   User     @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@unique([companyId, candidateId])
+  @@index([companyId])
+}
+
+/// คำเชิญให้ผู้หางานมาสมัครงาน (Owner Feature 2.5)
+model Invitation {
+  id          String           @id @default(cuid())
+  companyId   String
+  company     Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  candidateId String
+  candidate   User             @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  jobId       String
+  job         Job              @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  message     String?
+  status      InvitationStatus @default(SENT)
+  respondedAt DateTime?
+  createdAt   DateTime         @default(now())
+
+  @@unique([companyId, candidateId, jobId])
+  @@index([companyId])
+  @@index([candidateId])
+}
+
+/// หลักฐานการชำระค่าแพ็กเกจ (Owner Feature 9) – ผู้ดูแลระบบเป็นคนอนุมัติ
+model SubscriptionPayment {
+  id         String        @id @default(cuid())
+  companyId  String
+  company    Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  plan       PackagePlan
+  /// บาท
+  amount     Int
+  method     PaymentMethod
+  proofPath  String
+  proofName  String
+  status     PaymentStatus @default(PENDING)
+  reviewedAt DateTime?
+  createdAt  DateTime      @default(now())
+
+  @@index([companyId])
 }
 
 // ------------------------------------------------------------------
@@ -267,6 +439,9 @@ model SupportTicket {
   email     String
   topic     String
   message   String
+  /// ผู้แจ้งที่ล็อกอินอยู่ (ถ้ามี) และรูปประกอบที่แนบมา
+  userId      String?
+  attachments String[]     @default([])
   status    TicketStatus @default(OPEN)
   createdAt DateTime     @default(now())
 }

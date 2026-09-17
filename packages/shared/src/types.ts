@@ -55,6 +55,8 @@ export interface Company {
   coverImage?: string;
   /** รูปบรรยากาศบริษัท */
   gallery?: string[];
+  /** โลโก้ที่ผู้ประกอบการอัปโหลด – ไม่มีให้ใช้ logoText/logoColor แทน */
+  logoUrl?: string;
   /** พิกัดสำหรับแผนที่ */
   location?: { lat: number; lng: number };
 }
@@ -100,6 +102,8 @@ export interface Job {
   openings: number;
   /** รูป cover ของประกาศ – เว้นว่างได้ */
   coverImage?: string;
+  /** คำถามคัดกรองที่ผู้ประกอบการตั้งไว้ – ส่งมาเฉพาะหน้ารายละเอียดงาน */
+  questions?: JobQuestion[];
 }
 
 /** เงื่อนไขการค้นหา + แยกหมวดหมู่ (Feature 3.1 + 3.2) */
@@ -213,12 +217,45 @@ export type ApplicationStatus =
   | 'REJECTED'
   | 'HIRED';
 
+export type JobQuestionType = 'single' | 'date' | 'short' | 'multi' | 'long';
+
+/** คำถามคัดกรองของประกาศงาน (Owner Feature 4.2.1) */
+export interface JobQuestion {
+  id: string;
+  type: JobQuestionType;
+  text: string;
+  /** ตัวเลือกสำหรับ single / multi */
+  options: string[];
+  required: boolean;
+}
+
+export interface ApplicationAnswer {
+  questionId: string | null;
+  question: string;
+  type: JobQuestionType;
+  /** string[] เฉพาะคำถามแบบ multi */
+  answer: string | string[];
+}
+
 export interface JobApplication {
   id: string;
   job: Job;
   status: ApplicationStatus;
   coverLetter?: string;
+  answers?: ApplicationAnswer[];
   createdAt: string;
+}
+
+export type InvitationStatus = 'sent' | 'accepted' | 'declined';
+
+/** คำเชิญจากบริษัทที่ผู้หางานได้รับ (Owner Feature 2.5) */
+export interface MemberInvitation {
+  id: string;
+  status: InvitationStatus;
+  message?: string;
+  job: Job;
+  createdAt: string;
+  respondedAt?: string;
 }
 
 /** ฟอร์มติดต่อฝ่ายสนับสนุน – Feature 3.4 */

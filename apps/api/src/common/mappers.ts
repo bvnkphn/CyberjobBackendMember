@@ -4,6 +4,7 @@ import {
   WorkStyle as PrismaWorkStyle,
   type Company as CompanyRow,
   type Job as JobRow,
+  type JobQuestion as JobQuestionRow,
 } from '@prisma/client';
 import type {
   Company,
@@ -91,6 +92,7 @@ export function toCompanyDto(row: CompanyRow): Company {
     district: row.district ?? undefined,
     coverImage: row.coverImage ?? undefined,
     gallery: row.gallery,
+    logoUrl: row.logoUrl ?? undefined,
     location:
       row.lat !== null && row.lng !== null
         ? { lat: row.lat, lng: row.lng }
@@ -98,7 +100,17 @@ export function toCompanyDto(row: CompanyRow): Company {
   };
 }
 
-export function toJobDto(row: JobRow & { company: CompanyRow }): Job {
+export const QUESTION_TYPE_TO_API = {
+  SINGLE: 'single',
+  DATE: 'date',
+  SHORT: 'short',
+  MULTI: 'multi',
+  LONG: 'long',
+} as const;
+
+export function toJobDto(
+  row: JobRow & { company: CompanyRow; questions?: JobQuestionRow[] },
+): Job {
   return {
     id: row.id,
     slug: row.slug,
@@ -125,5 +137,12 @@ export function toJobDto(row: JobRow & { company: CompanyRow }): Job {
     skills: row.skills,
     openings: row.openings,
     coverImage: row.coverImage ?? undefined,
+    questions: row.questions?.map((question) => ({
+      id: question.id,
+      type: QUESTION_TYPE_TO_API[question.type],
+      text: question.text,
+      options: question.options,
+      required: question.required,
+    })),
   };
 }

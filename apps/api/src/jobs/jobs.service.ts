@@ -223,7 +223,7 @@ export class JobsService {
   async findOne(idOrSlug: string): Promise<Job> {
     const row = await this.prisma.job.findFirst({
       where: { isActive: true, OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
-      include: WITH_COMPANY,
+      include: { ...WITH_COMPANY, questions: { orderBy: { position: 'asc' } } },
     });
     if (!row) throw new NotFoundException(`ไม่พบประกาศงาน: ${idOrSlug}`);
     return toJobDto(row);

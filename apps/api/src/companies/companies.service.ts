@@ -12,7 +12,9 @@ export class CompaniesService {
   ) {}
 
   async list(): Promise<Company[]> {
+    // บริษัทที่ตั้งค่าเป็นส่วนตัวไม่แสดงในรายชื่อและหน้าบริษัท
     const rows = await this.prisma.company.findMany({
+      where: { isPublic: true },
       orderBy: { name: 'asc' },
     });
     return rows.map(toCompanyDto);
@@ -20,7 +22,7 @@ export class CompaniesService {
 
   async findOne(slugOrId: string): Promise<Company> {
     const row = await this.prisma.company.findFirst({
-      where: { OR: [{ slug: slugOrId }, { id: slugOrId }] },
+      where: { isPublic: true, OR: [{ slug: slugOrId }, { id: slugOrId }] },
     });
     if (!row) throw new NotFoundException(`ไม่พบบริษัท: ${slugOrId}`);
     return toCompanyDto(row);

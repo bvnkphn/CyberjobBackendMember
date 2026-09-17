@@ -5,14 +5,15 @@ import {
   Get,
   HttpCode,
   Param,
+  Patch,
   Post,
   UseGuards,
 } from '@nestjs/common';
-import type { Job, JobApplication } from '@cyberjob/shared';
+import type { Job, JobApplication, MemberInvitation } from '@cyberjob/shared';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/guards';
 import type { RequestUser } from '../auth/auth.types';
-import { AddBookmarkDto, ApplyDto, SyncBookmarksDto } from './dto/me.dto';
+import { AddBookmarkDto, ApplyDto, RespondInvitationDto, SyncBookmarksDto } from './dto/me.dto';
 import { MeService } from './me.service';
 
 /** ทุก endpoint ในนี้ต้องล็อกอิน */
@@ -65,6 +66,22 @@ export class MeController {
     @CurrentUser() user: RequestUser,
     @Body() dto: ApplyDto,
   ): Promise<JobApplication> {
-    return this.me.apply(user.id, dto.jobId, dto.coverLetter);
+    return this.me.apply(user.id, dto.jobId, dto.coverLetter, dto.answers);
+  }
+
+  /** GET /api/me/invitations – คำเชิญจากบริษัท */
+  @Get('invitations')
+  invitations(@CurrentUser() user: RequestUser): Promise<MemberInvitation[]> {
+    return this.me.invitations(user.id);
+  }
+
+  /** PATCH /api/me/invitations/:id – ตอบรับหรือปฏิเสธคำเชิญ */
+  @Patch('invitations/:id')
+  respondInvitation(
+    @CurrentUser() user: RequestUser,
+    @Param('id') id: string,
+    @Body() dto: RespondInvitationDto,
+  ): Promise<MemberInvitation> {
+    return this.me.respondInvitation(user.id, id, dto.status);
   }
 }
