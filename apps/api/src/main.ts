@@ -1,23 +1,33 @@
 import 'reflect-metadata';
-import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { Logger, ValidationPipe } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
+import { publicUploadDir } from './owner/common/files';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   // Hostinger ตรวจ root path ระหว่างเริ่ม process จึงต้องตอบ 200 โดยไม่ผ่าน API prefix
   app.getHttpAdapter().get('/', (_req: unknown, res: { json: (body: unknown) => void }) => {
     res.json({
       status: 'ok',
-      service: 'cyberjob-backend-member',
+      service: 'cyberjob-backend',
       api: '/api',
     });
   });
 
   app.setGlobalPrefix('api');
   app.use(cookieParser());
+
+  // เสิร์ฟรูปภาพ public ของผู้ประกอบการ (โลโก้ รูปปก แกลเลอรี)
+  app.useStaticAssets(publicUploadDir(), {
+    prefix: '/uploads/public/',
+    index: false,
+    dotfiles: 'deny',
+    setHeaders: (res: any) => res.setHeader('X-Content-Type-Options', 'nosniff'),
+  });
 
   // ต้องเปิด credentials เพื่อให้เบราว์เซอร์ส่ง refresh cookie มาด้วย
   // ไม่ตั้ง WEB_ORIGIN → จำกัดไว้ที่ localhost เท่านั้น (ไม่สะท้อน origin ใดก็ได้)

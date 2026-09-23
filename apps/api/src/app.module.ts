@@ -9,6 +9,7 @@ import { MetaModule } from './meta/meta.module';
 import { SupportModule } from './support/support.module';
 import { HealthController } from './health.controller';
 import { GateModule } from './gate/gate.module';
+import { OwnerModule } from './owner/owner.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { GateModule } from './gate/gate.module';
     MetaModule,
     SupportModule,
     GateModule,
+    OwnerModule,
   ],
   controllers: [HealthController],
 })
