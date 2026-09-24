@@ -2,7 +2,7 @@
   "name": "cyberjob-backend",
   "private": true,
   "version": "0.1.0",
-  "description": "CyberJob \u2013 backend (NestJS + Prisma + PostgreSQL)",
+  "description": "CyberJob – backend (NestJS + Prisma + PostgreSQL)",
   "workspaces": [
     "packages/*",
     "apps/*"

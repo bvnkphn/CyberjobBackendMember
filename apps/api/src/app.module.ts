@@ -10,6 +10,7 @@ import { SupportModule } from './support/support.module';
 import { HealthController } from './health.controller';
 import { GateModule } from './gate/gate.module';
 import { OwnerModule } from './owner/owner.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { OwnerModule } from './owner/owner.module';
     SupportModule,
     GateModule,
     OwnerModule,
+    AdminModule,
   ],
   controllers: [HealthController],
 })
