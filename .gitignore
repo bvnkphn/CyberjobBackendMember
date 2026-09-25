@@ -8,3 +8,5 @@ build/
 .env.local
 .DS_Store
 npm-debug.log*
+scripts/
+*.zip

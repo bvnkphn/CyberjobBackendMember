@@ -1,11 +1,11 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 
 @Injectable()
 export class PrismaService
   extends PrismaClient
-  implements OnModuleInit, OnModuleDestroy
+  implements OnModuleInit
 {
   private readonly logger = new Logger(PrismaService.name);
 
@@ -35,9 +35,5 @@ export class PrismaService
         `ยังเชื่อมต่อ PostgreSQL ไม่สำเร็จตอนเริ่มระบบ: ${error instanceof Error ? error.message : 'unknown error'}`,
       );
     }
-  }
-
-  async onModuleDestroy(): Promise<void> {
-    await this.$disconnect();
   }
 }

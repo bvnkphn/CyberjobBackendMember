@@ -12,7 +12,7 @@ import {
 } from "../common/files";
 import { autoApprove, effectivePlan } from "../common/plans";
 import type { OwnerContext } from "../auth/owner.guard";
-import { DOCUMENT_TYPES, type DocumentType, type PrivacyDto, type UpdateCompanyDto, type VerificationDto } from "./dto";
+import { DOCUMENT_TYPES, type DocumentType, type PrivacyDto, type RequestVerificationDto, type UpdateCompanyDto, type VerificationDto } from "./dto";
 
 const COMPANY_TYPE: Record<string, CompanyType> = {
   private: "PRIVATE",
@@ -238,7 +238,36 @@ export class CompanyService {
       data.lat = point?.lat ?? null;
       data.lng = point?.lng ?? null;
     }
+    // ข้อมูลการยืนยันบริษัทจะบันทึกได้เฉพาะเมื่อส่งขอการยืนยัน (requestVerification) เท่านั้น
+    // และสถานะจะเปลี่ยนเป็น PENDING เพื่อส่งให้ Admin อนุมัติเสมอ
+    if (dto.requestVerification) {
+      if (dto.registrationNumber !== undefined) data.registrationNumber = dto.registrationNumber || null;
+      if (dto.contactName !== undefined) data.contactName = dto.contactName || null;
+      if (dto.contactPosition !== undefined) data.contactPosition = dto.contactPosition || null;
+      if (dto.contactPhone !== undefined) data.contactPhone = dto.contactPhone || null;
+      data.verificationStatus = "PENDING";
+      data.verified = false;
+      data.verificationSubmittedAt = new Date();
+    }
     const updated = await this.prisma.company.update({ where: { id: company.id }, data });
+
+    return this.toProfile(updated);
+  }
+
+  async requestVerification(owner: OwnerContext, dto: RequestVerificationDto) {
+    const company = await this.own(owner);
+    const updated = await this.prisma.company.update({
+      where: { id: company.id },
+      data: {
+        registrationNumber: dto.registrationNumber,
+        contactName: dto.contactName || null,
+        contactPosition: dto.contactPosition || null,
+        contactPhone: dto.contactPhone || null,
+        verificationStatus: "PENDING",
+        verified: false,
+        verificationSubmittedAt: new Date(),
+      },
+    });
     return this.toProfile(updated);
   }
 

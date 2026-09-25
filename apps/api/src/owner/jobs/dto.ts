@@ -67,9 +67,9 @@ export class SaveJobDto {
   @IsIn(["onsite", "hybrid", "remote"], { message: "รูปแบบการทำงานไม่ถูกต้อง" })
   workStyle!: "onsite" | "hybrid" | "remote";
 
-  /** ตามชีตสเปก: งานเต็มเวลา สัญญาจ้าง งานชั่วคราว (ตัดฝึกงานออก) */
-  @IsIn(["fulltime", "contract", "temporary"], { message: "ประเภทการจ้างงานไม่ถูกต้อง" })
-  employmentType!: "fulltime" | "contract" | "temporary";
+  /** งานเต็มเวลา พาร์ทไทม์ สัญญาจ้าง งานชั่วคราว ฝึกงาน */
+  @IsIn(["fulltime", "parttime", "contract", "temporary", "internship"], { message: "ประเภทการจ้างงานไม่ถูกต้อง" })
+  employmentType!: "fulltime" | "parttime" | "contract" | "temporary" | "internship";
 
   @Type(() => Number)
   @IsInt()

@@ -18,7 +18,7 @@ import { FileFieldsInterceptor, FileInterceptor, FilesInterceptor } from "@nestj
 import { CurrentOwner, OwnerGuard, type OwnerContext } from "../auth/owner.guard";
 import { DOCUMENT_MAX_BYTES, IMAGE_MAX_BYTES, multerOptions } from "../common/files";
 import { CompanyService, type DocumentFiles } from "./company.service";
-import { PrivacyDto, UpdateCompanyDto, VerificationDto } from "./dto";
+import { PrivacyDto, RequestVerificationDto, UpdateCompanyDto, VerificationDto } from "./dto";
 
 @Controller("owner/company")
 @UseGuards(OwnerGuard)
@@ -67,6 +67,11 @@ export class CompanyController {
   @Patch()
   update(@CurrentOwner() owner: OwnerContext, @Body() dto: UpdateCompanyDto) {
     return this.company.update(owner, dto);
+  }
+
+  @Post("request-verification")
+  requestVerification(@CurrentOwner() owner: OwnerContext, @Body() dto: RequestVerificationDto) {
+    return this.company.requestVerification(owner, dto);
   }
 
   @Patch("privacy")

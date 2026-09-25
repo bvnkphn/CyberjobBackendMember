@@ -1,5 +1,6 @@
 import { Transform } from "class-transformer";
 import {
+  IsBoolean,
   IsEmail,
   IsIn,
   IsOptional,
@@ -10,6 +11,7 @@ import {
   MinLength,
   ValidateIf,
 } from "class-validator";
+
 
 const trim = ({ value }: { value: unknown }) => (typeof value === "string" ? value.trim() : value);
 const emptyToUndefined = ({ value }: { value: unknown }) =>
@@ -150,6 +152,61 @@ export class UpdateCompanyDto {
   @IsUrl({ require_protocol: true, protocols: ["https"] }, { message: "ลิงก์แผนที่ต้องเป็น https://" })
   @MaxLength(1000)
   mapUrl?: string;
+
+  /** ข้อมูลการยืนยันบริษัท */
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @MaxLength(30)
+  registrationNumber?: string;
+
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @MaxLength(120)
+  contactName?: string;
+
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @MaxLength(100)
+  contactPosition?: string;
+
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @MaxLength(30)
+  contactPhone?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  requestVerification?: boolean;
+}
+
+export class RequestVerificationDto {
+  @Transform(trim)
+  @IsString()
+  @MinLength(3, { message: "กรุณาระบุเลขทะเบียนนิติบุคคล" })
+  @MaxLength(30)
+  registrationNumber!: string;
+
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @MaxLength(120)
+  contactName?: string;
+
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @MaxLength(100)
+  contactPosition?: string;
+
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @MaxLength(30)
+  contactPhone?: string;
 }
 
 export class PrivacyDto {

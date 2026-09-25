@@ -11,7 +11,7 @@ import type { JobQuestionDto, QueryJobsDto, SaveJobDto } from "./dto";
 const STATUS_TO_API = { DRAFT: "draft", PUBLISHED: "published", CLOSED: "closed" } as const;
 const WORK_STYLE = { onsite: "ONSITE", hybrid: "HYBRID", remote: "REMOTE" } as const;
 const WORK_STYLE_TO_API = { ONSITE: "onsite", HYBRID: "hybrid", REMOTE: "remote" } as const;
-const EMPLOYMENT = { fulltime: "FULLTIME", contract: "CONTRACT", temporary: "TEMPORARY" } as const;
+const EMPLOYMENT = { fulltime: "FULLTIME", parttime: "PARTTIME", contract: "CONTRACT", temporary: "TEMPORARY", internship: "INTERNSHIP" } as const;
 const EMPLOYMENT_TO_API = {
   FULLTIME: "fulltime",
   PARTTIME: "parttime",
@@ -276,7 +276,9 @@ export class OwnerJobsService {
     if (dto.salaryMax < dto.salaryMin) throw new BadRequestException("เงินเดือนสูงสุดต้องไม่น้อยกว่าเงินเดือนต่ำสุด");
     if (dto.status === "published") {
       if (dto.description.trim().length < 20) throw new BadRequestException("กรุณาระบุรายละเอียดงานอย่างน้อย 20 ตัวอักษร");
-      if (dto.salaryMax <= 0) throw new BadRequestException("กรุณาระบุช่วงเงินเดือน");
+      if (dto.salaryMax <= 0 && dto.employmentType !== "internship" && !dto.salaryNegotiable) {
+        throw new BadRequestException("กรุณาระบุช่วงเงินเดือน หรือเลือกแบบไม่มีเงินเดือน/ตามตกลง");
+      }
     }
     for (const question of dto.questions) {
       if ((question.type === "single" || question.type === "multi") && cleanList(question.options).length < 2) {
