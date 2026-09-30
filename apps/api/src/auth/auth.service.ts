@@ -156,7 +156,7 @@ export class AuthService {
     return `${visiblePrefix}${'*'.repeat(Math.max(1, local.length - 2))}@${domain}`;
   }
 
-  async login(email: string, password: string) {
+  async login(email: string, password: string, userAgent?: string) {
     const user = await this.prisma.user.findUnique({
       where: { email: email.trim().toLowerCase() },
     });
@@ -168,7 +168,12 @@ export class AuthService {
     const ok = await bcrypt.compare(password, user.passwordHash);
     if (!ok) throw invalid;
 
-    // ส่งรหัส OTP ยืนยันตัวตน 2FA
+    // สำหรับผู้ดูแลระบบ (ADMIN) อนุญาตให้ออกสิทธิ์เข้าใช้งานหลังบ้านได้ทันที
+    if (user.role === UserRole.ADMIN) {
+      return this.buildResult(user, userAgent);
+    }
+
+    // สำหรับ Member (JOBSEEKER) และ Owner (EMPLOYER) ส่งรหัส OTP ยืนยันตัวตน 2FA
     await this.otpService.generateOtp(user.email, 'LOGIN_2FA');
 
     return {
