@@ -8,8 +8,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ------------------------------------------------------------------
@@ -445,3 +446,22 @@ model SupportTicket {
   status    TicketStatus @default(OPEN)
   createdAt DateTime     @default(now())
 }
+
+// ------------------------------------------------------------------
+// รหัส OTP สำหรับเข้าสู่ระบบ / ยืนยันตัวตน (2FA)
+// ------------------------------------------------------------------
+
+model OtpCode {
+  id        String    @id @default(cuid())
+  email     String
+  code      String
+  type      String    @default("LOGIN_2FA")
+  expiresAt DateTime
+  usedAt    DateTime?
+  attempts  Int       @default(0)
+  createdAt DateTime  @default(now())
+
+  @@index([email, type])
+  @@index([expiresAt])
+}
+

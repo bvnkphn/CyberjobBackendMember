@@ -34,3 +34,32 @@ export class LoginDto {
   @MinLength(1, { message: 'กรุณากรอกรหัสผ่าน' })
   password!: string;
 }
+
+export class VerifyLoginOtpDto {
+  @IsEmail({}, { message: 'รูปแบบอีเมลไม่ถูกต้อง' })
+  email!: string;
+
+  @IsString()
+  @MinLength(4, { message: 'กรุณากรอกรหัส OTP' })
+  @MaxLength(10)
+  code?: string;
+
+  @IsOptional()
+  @IsString()
+  otp?: string;
+}
+
+export class ResendLoginOtpDto {
+  @IsEmail({}, { message: 'รูปแบบอีเมลไม่ถูกต้อง' })
+  email!: string;
+}
+
+export class GoogleVerifyDto {
+  @IsString({ message: 'กรุณาระบุ Google credential ID token' })
+  credential!: string;
+
+  @IsEnum(RegistrationRole, { message: 'ประเภทบัญชีไม่ถูกต้อง' })
+  @IsOptional()
+  role?: RegistrationRole = RegistrationRole.JOBSEEKER;
+}
+

@@ -5,14 +5,16 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import type { User } from '@prisma/client';
+import { AuthProvider, UserRole, type User } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { createHash, randomBytes } from 'crypto';
+import { OAuth2Client } from 'google-auth-library';
 import type { AuthResult, AuthUser } from '@cyberjob/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { isUniqueViolation } from '../common/prisma-errors';
-import { RegisterDto } from './dto/auth.dto';
+import { RegisterDto, RegistrationRole } from './dto/auth.dto';
 import type { JwtPayload, OAuthProfile } from './auth.types';
+import { OtpService } from './otp.service';
 
 const BCRYPT_ROUNDS = 10;
 
@@ -22,6 +24,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
+    private readonly otpService: OtpService,
   ) {}
 
   /* ---------------------------------------------------------------- */
@@ -143,7 +146,17 @@ export class AuthService {
     return this.buildResult(user, userAgent);
   }
 
-  async login(email: string, password: string, userAgent?: string) {
+  private maskEmail(email: string): string {
+    const [local, domain] = email.split('@');
+    if (!domain) return email;
+    if (local.length <= 2) {
+      return `${local[0]}*@${domain}`;
+    }
+    const visiblePrefix = local.slice(0, 2);
+    return `${visiblePrefix}${'*'.repeat(Math.max(1, local.length - 2))}@${domain}`;
+  }
+
+  async login(email: string, password: string) {
     const user = await this.prisma.user.findUnique({
       where: { email: email.trim().toLowerCase() },
     });
@@ -155,8 +168,108 @@ export class AuthService {
     const ok = await bcrypt.compare(password, user.passwordHash);
     if (!ok) throw invalid;
 
+    // ส่งรหัส OTP ยืนยันตัวตน 2FA
+    await this.otpService.generateOtp(user.email, 'LOGIN_2FA');
+
+    return {
+      requireOtp: true,
+      email: user.email,
+      maskedEmail: this.maskEmail(user.email),
+      message: 'กรุณากรอกรหัส OTP 6 หลักที่ส่งไปยังอีเมลของคุณ',
+    };
+  }
+
+  async verifyLoginOtp(email: string, code: string, userAgent?: string) {
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('ไม่พบบัญชีผู้ใช้');
+    }
+
+    // ตรวจสอบ OTP
+    await this.otpService.verifyOtp(normalizedEmail, code, 'LOGIN_2FA');
+
+    // ยืนยันสำเร็จ ออก token
     return this.buildResult(user, userAgent);
   }
+
+  async resendLoginOtp(email: string) {
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('ไม่พบบัญชีผู้ใช้');
+    }
+
+    return this.otpService.generateOtp(normalizedEmail, 'LOGIN_2FA');
+  }
+
+  async loginWithGoogleToken(idToken: string, requestedRole?: RegistrationRole, userAgent?: string) {
+    const clientId = this.config.get<string>('GOOGLE_CLIENT_ID');
+    const client = new OAuth2Client(clientId);
+
+    let ticket;
+    try {
+      ticket = await client.verifyIdToken({
+        idToken,
+        audience: clientId || undefined,
+      });
+    } catch (err) {
+      throw new UnauthorizedException(
+        `การตรวจสอบสิทธิ์ Google ไม่สำเร็จ: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+
+    const payload = ticket.getPayload();
+    if (!payload || !payload.email) {
+      throw new UnauthorizedException('ข้อมูลจากบัญชี Google ไม่ถูกต้องหรือไม่พบอีเมล');
+    }
+
+    const email = payload.email.trim().toLowerCase();
+    const name = payload.name || payload.given_name || email.split('@')[0];
+    const avatarUrl = payload.picture || null;
+    const providerId = payload.sub;
+
+    let user = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { provider: AuthProvider.GOOGLE, providerId },
+          { email },
+        ],
+      },
+    });
+
+    if (!user) {
+      const role = requestedRole === 'EMPLOYER' ? UserRole.EMPLOYER : UserRole.JOBSEEKER;
+      user = await this.prisma.user.create({
+        data: {
+          email,
+          name,
+          avatarUrl,
+          provider: AuthProvider.GOOGLE,
+          providerId,
+          role,
+        },
+      });
+    } else {
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          provider: AuthProvider.GOOGLE,
+          providerId,
+          avatarUrl: user.avatarUrl ?? avatarUrl,
+        },
+      });
+    }
+
+    return this.buildResult(user, userAgent);
+  }
+
 
   /* ---------------------------------------------------------------- */
   /* OAuth 2.0                                                         */

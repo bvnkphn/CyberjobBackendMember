@@ -6,6 +6,8 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
+import { MailService } from './mail.service';
+import { OtpService } from './otp.service';
 
 /** token สำหรับ provider ของ Google strategy */
 const GOOGLE_STRATEGY = Symbol('GOOGLE_STRATEGY');
@@ -26,6 +28,8 @@ const GOOGLE_STRATEGY = Symbol('GOOGLE_STRATEGY');
   controllers: [AuthController],
   providers: [
     AuthService,
+    MailService,
+    OtpService,
     JwtStrategy,
     {
       /**
@@ -42,6 +46,7 @@ const GOOGLE_STRATEGY = Symbol('GOOGLE_STRATEGY');
           : null,
     },
   ],
-  exports: [AuthService],
+  exports: [AuthService, MailService, OtpService],
 })
 export class AuthModule {}
+

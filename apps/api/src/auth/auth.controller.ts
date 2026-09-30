@@ -12,7 +12,13 @@ import { ConfigService } from '@nestjs/config';
 import type { Request, Response } from 'express';
 import type { AuthResult, AuthUser } from '@cyberjob/shared';
 import { AuthService } from './auth.service';
-import { LoginDto, RegisterDto } from './dto/auth.dto';
+import {
+  GoogleVerifyDto,
+  LoginDto,
+  RegisterDto,
+  ResendLoginOtpDto,
+  VerifyLoginOtpDto,
+} from './dto/auth.dto';
 import { REFRESH_COOKIE, type OAuthProfile, type RequestUser } from './auth.types';
 import { GoogleAuthGuard, JwtAuthGuard } from './guards/guards';
 import { CurrentUser } from './decorators/current-user.decorator';
@@ -80,17 +86,69 @@ export class AuthController {
   @HttpCode(200)
   async login(
     @Body() dto: LoginDto,
+  ) {
+    return this.auth.login(dto.email, dto.password);
+  }
+
+  @Post('verify-login-otp')
+  @HttpCode(200)
+  async verifyLoginOtp(
+    @Body() dto: VerifyLoginOtpDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<AuthResult> {
-    const { result, refreshToken } = await this.auth.login(
+    const code = dto.code || dto.otp || '';
+    const { result, refreshToken } = await this.auth.verifyLoginOtp(
       dto.email,
-      dto.password,
+      code,
       req.headers['user-agent'],
     );
     this.setRefreshCookie(res, refreshToken);
     return result;
   }
+
+  @Post('verify-otp')
+  @HttpCode(200)
+  async verifyOtp(
+    @Body() dto: VerifyLoginOtpDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AuthResult> {
+    return this.verifyLoginOtp(dto, req, res);
+  }
+
+  @Post('resend-login-otp')
+  @HttpCode(200)
+  async resendLoginOtp(
+    @Body() dto: ResendLoginOtpDto,
+  ) {
+    return this.auth.resendLoginOtp(dto.email);
+  }
+
+  @Post('resend-otp')
+  @HttpCode(200)
+  async resendOtp(
+    @Body() dto: ResendLoginOtpDto,
+  ) {
+    return this.auth.resendLoginOtp(dto.email);
+  }
+
+  @Post('google/verify')
+  @HttpCode(200)
+  async googleVerify(
+    @Body() dto: GoogleVerifyDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AuthResult> {
+    const { result, refreshToken } = await this.auth.loginWithGoogleToken(
+      dto.credential,
+      dto.role,
+      req.headers['user-agent'],
+    );
+    this.setRefreshCookie(res, refreshToken);
+    return result;
+  }
+
 
   /* ---------------------------------------------------------------- */
   /* refresh / logout / me                                             */
