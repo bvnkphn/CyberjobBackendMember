@@ -21,6 +21,16 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
   app.use(cookieParser());
 
+  // Security Headers Middleware (Enterprise Cybersecurity Standard)
+  app.use((_req: any, res: any, next: any) => {
+    res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    next();
+  });
+
   // เสิร์ฟรูปภาพ public ของผู้ประกอบการ (โลโก้ รูปปก แกลเลอรี)
   app.useStaticAssets(publicUploadDir(), {
     prefix: '/uploads/public/',

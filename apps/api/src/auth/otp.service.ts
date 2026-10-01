@@ -38,8 +38,9 @@ export class OtpService {
       }
     }
 
-    // สร้างรหัส OTP 6 หลัก
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    // สร้างรหัส OTP 6 หลักด้วย Cryptographically Secure Pseudo-Random Generator (CSPRNG)
+    const crypto = await import('crypto');
+    const code = crypto.randomInt(100000, 1000000).toString();
     const expiresAt = new Date(Date.now() + OTP_TTL_MS);
 
     // บันทึกลงฐานข้อมูล
