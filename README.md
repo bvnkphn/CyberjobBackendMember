@@ -1,127 +1,146 @@
-# CyberJob — Backend API (NestJS + Prisma)
+# CyberJob — ศูนย์รวมตำแหน่งงานด้านความมั่นคงปลอดภัยไซเบอร์ (Cybersecurity Job Platform)
 
-> **เทคโนโลยีหลัก:** NestJS 10, Prisma ORM 5.22.0, PostgreSQL 16 (Supabase Cloud), Passport JWT, Nodemailer, Google Auth Library  
-> **ที่อยู่โปรเจกต์:** [backend/](file:///d:/CyberJob_/backend)  
-> **Production API:** [https://cyberjob.asia/api](https://cyberjob.asia/api)  
-> **GitLab Repository:** `cyberjobbackendmember/cyberjobbackendmember.git` (Branch: `main`)
-
----
-
-## 1. ภาพรวมสถาปัตยกรรม Backend
-
-Backend ของ CyberJob ทำหน้าที่เป็น API Gateway และศูนย์กลางประมวลผลข้อมูลของแพลตฟอร์มทั้งหมด โดยรวมบริการไว้ 4 ส่วนหลัก:
-1. **Authentication & Security:** การล็อกอินด้วยรหัสผ่าน, ระบบ Two-Factor Authentication (OTP ส่งเข้าอีเมล), Google Sign-In Verification, และการจัดการ JWT Tokens
-2. **Member Service:** ระบบค้นหาและกรองตำแหน่งงาน, ยื่นใบสมัครงาน 3 ขั้นตอน, จัดการประวัติและเรซูเม่, ระบบมุดงาน (Hide Job Privacy)
-3. **Owner Service (`/apps/api/src/owner`):** แดชบอร์ดผู้ประกอบการ, สร้าง/แก้ไขงาน (Markdown), จับคู่ผู้สมัคร (Matching Score), ส่งคำเชิญ, แพ็กเกจและสลิปชำระเงิน
-4. **Admin Service (`/apps/api/src/admin`):** ตรวจสอบและอนุมัติบริษัท, กำกับดูแลประกาศงาน, จัดการผู้ใช้, จัดการคำค้นหา (Synonyms), ตรวจสอบสลิปโอนเงิน
+> **Production URL:** [https://cyberjob.asia](https://cyberjob.asia)  
+> **API Endpoint:** [https://cyberjob.asia/api](https://cyberjob.asia/api)  
+> **Admin Portal:** [https://cyberjob.asia/admin](https://cyberjob.asia/admin)  
+> **คู่มือการใช้งานสำหรับผู้ใช้:** [CYBERJOB_USER_MANUAL.md](CYBERJOB_USER_MANUAL.md)  
+> **คู่มือนักพัฒนา (Architecture, Hostinger Deployment & Docker):** [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)
 
 ---
 
-## 2. โครงสร้างโมดูล (Module Structure)
+## 1. ภาพรวมระบบ (System Architecture)
+
+CyberJob เป็นแพลตฟอร์มแบบ **Unified Full-Stack Solution** ที่รวมระบบหลักทั้ง 3 ส่วน (ผู้หางาน, ผู้ประกอบการ, และผู้ดูแลระบบ) ไว้ในชุดโปรเจกต์เดียวกัน เพื่อความสะดวกในการพัฒนา จัดการ และ Deploy ขึ้นเซิร์ฟเวอร์ Hostinger ผ่าน Passenger:
+
+| ส่วนประกอบ | เทคโนโลยีหลัก | หน้าที่รับผิดชอบ | เส้นทาง / URL |
+| :--- | :--- | :--- | :--- |
+| **Frontend** | Next.js 14+ (App Router), React, Google GIS, Lucide Icons | หน้าบ้านสำหรับ Member, Owner Dashboard, และ Admin Portal | `https://cyberjob.asia/` |
+| **Backend** | NestJS 10, Prisma ORM 5.22, Passport JWT, Nodemailer | RESTful API, ระบบ OTP 2FA, การยืนยันสิทธิ์, จัดการข้อมูล | `https://cyberjob.asia/api` |
+| **Database** | Supabase PostgreSQL 16 (Connection Pooler & Direct) | จัดเก็บข้อมูลผู้ใช้, ประกาศงาน, บริษัท, ใบสมัคร, สลิป, OTP | Remote Supabase Cloud |
+| **Web Server** | LiteSpeed Web Server + Phusion Passenger | Reverse Proxy, Application Server, SSL Certificate | Hostinger Cloud Hosting |
+
+---
+
+## 2. โครงสร้างโฟลเดอร์ในระบบ (Directory Structure)
 
 ```text
-apps/api/
-├── prisma/
-│   ├── schema.prisma              # Database Schema (468 บรรทัด ครอบคลุม 17 Enums และ 18 Models)
-│   └── seed.ts                    # สคริปต์สร้างข้อมูลตัวอย่าง (บริษัท, งาน, แอดมิน, สมาชิก)
-└── src/
-    ├── admin/                     # โมดูลผู้ดูแลระบบ (AdminController, AdminService)
-    ├── auth/
-    │   ├── auth.controller.ts     # Endpoints: /login, /verify-login-otp, /resend-login-otp, /google/verify
-    │   ├── auth.service.ts        # Logic การตรวจสอบสิทธิ์, สร้าง JWT, แยก Role Redirection
-    │   ├── otp.service.ts         # การสุ่มรหัส OTP 6 หลัก, อายุ 5 นาที, คูลดาวน์ 60 วิ, ป้องกัน Replay
-    │   ├── mail.service.ts        # บริการส่งอีเมล HTML Template สวยงามผ่าน SMTP
-    │   └── dto/auth.dto.ts        # DTOs สำหรับ Validate ข้อมูลเข้าสู่ระบบและ OTP
-    ├── common/                    # Decorators, Guards, Pipes, Interceptors
-    ├── companies/                 # โมดูลบริษัทและการยืนยันเอกสาร
-    ├── jobs/                      # โมดูลตำแหน่งงานและตัวกรองค้นหา
-    ├── me/                        # ข้อมูลส่วนตัวของผู้ใช้งานและเรซูเม่
-    ├── owner/                     # โมดูลผู้ประกอบการ (Jobs, Candidates, Packages, Subscriptions)
-    ├── prisma/                    # PrismaModule และ PrismaService จัดการ Database Connection
-    └── support/                   # โมดูลรับเรื่องติดต่อและฝ่ายบริการลูกค้า
+D:\CyberJob_\
+├── CYBERJOB_USER_MANUAL.md         # คู่มือการใช้งานเว็บฉบับสมบูรณ์ (ผู้ใช้, บริษัท, ผู้ดูแล)
+├── README.md                       # เอกสารสถาปัตยกรรมและการติดตั้งระบบฉบับนี้
+├── backend\                        # โค้ด Backend NestJS หลัก (รวม Member + Owner + Admin API)
+│   ├── apps\
+│   │   └── api\
+│   │       ├── prisma\             # Prisma Schema 5.22 & Database Migrations
+│   │       └── src\
+│   │           ├── admin\          # โมดูล API สำหรับผู้ดูแลระบบ
+│   │           ├── auth\           # ระบบ Authentication, Google OAuth, OTP 2FA, Mailer
+│   │           ├── common\         # Guards, Decorators, Interceptors
+│   │           ├── companies\      # ข้อมูลและเอกสารบริษัท
+│   │           ├── jobs\           # ประกาศงานและการค้นหา
+│   │           ├── me\             # โปรไฟล์ผู้ใช้งานและเรซูเม่
+│   │           ├── owner\          # โมดูล API สำหรับผู้ประกอบการ (Jobs, Candidates, Packages)
+│   │           └── support\        # ระบบคำร้องเรียนและฝ่ายบริการ
+│   └── scripts\
+│       ├── deploy_update.py        # สคริปต์อัตโนมัติสำหรับ Build & Deploy ขึ้น Hostinger
+│       └── smoke.mjs               # สคริปต์รัน Smoke Test ตรวจสอบความถูกต้องของ API
+├── frontend\                       # โค้ด Frontend Next.js หลัก (รวม Member + Owner + Admin UI)
+│   ├── server.cjs                  # Custom Passenger Entry Point สำหรับ Next.js บน Hostinger
+│   └── src\
+│       ├── app\
+│       │   ├── (public)\           # หน้าสาธารณะ (/, /jobs, /articles, /about, /contact)
+│       │   ├── admin\              # หน้าศูนย์ควบคุมหลังบ้าน (/admin)
+│       │   ├── dashboard\          # หน้าแดชบอร์ดหลักของผู้ประกอบการ (/dashboard)
+│       │   ├── gate\               # หน้าเข้าสู่ระบบและสมัครสมาชิก (/gate/login, /gate/register)
+│       │   ├── job-postings\       # ระบบจัดการและสร้างประกาศงานด้วย Markdown
+│       │   ├── candidates\         # ระบบค้นหาและคัดเลือกผู้สมัครด้วย Matching Score
+│       │   └── profile\            # ระบบจัดการโปรไฟล์ผู้หางานและฟังก์ชันมุดงาน
+│       └── components\             # UI Components, Markdown Editor, Google Buttons
 ```
 
 ---
 
-## 3. รายการ Endpoints สำคัญ (Key API Endpoints)
+## 3. ระบบความปลอดภัยและการเข้าสู่ระบบ (Authentication & Security)
 
-### 3.1 การเข้าสู่ระบบและความปลอดภัย (`/api/auth`)
-| Method | Path | หน้าที่ | คำอธิบาย |
+### 3.1 การเข้าสู่ระบบ 2 ขั้นตอน (Two-Factor Authentication: OTP)
+- **ผู้หางาน (`JOBSEEKER`) และ ผู้ประกอบการ (`EMPLOYER`):**
+  - ขั้นตอนที่ 1: กรอกอีเมลและรหัสผ่าน (ตรวจสอบความถูกต้องด้วย bcrypt 10 rounds)
+  - ขั้นตอนที่ 2: ระบบจะสร้างรหัสตัวเลข OTP 6 หลัก และจัดส่งเข้าอีเมลทันที (รหัสมีอายุ 5 นาที, จำกัดเวลาขอใหม่ 60 วินาที, ป้องกัน Brute-force จำกัดใส่ผิดไม่เกิน 5 ครั้ง)
+  - เมื่อกรอก OTP ถูกต้อง จึงจะได้รับคู่ JWT Tokens (Access Token + Refresh Token ใน httpOnly Cookie)
+- **ผู้ดูแลระบบ (`ADMIN`):**
+  - บัญชีผู้ดูแลระบบ (ADMIN) และบัญชีทดสอบทั้ง 3 บทบาท (Admin, Owner, Member) จะข้ามขั้นตอน OTP และเข้าสู่ระบบได้ทันทีเพื่อความสะดวกรวดเร็วในการทดสอบระบบ
+
+### 3.2 การเข้าสู่ระบบด้วย Google Account (GIS)
+- รองรับ Google One-Tap และ Google Sign-In Button
+- Backend ตรวจสอบ ID Token โดยตรงกับ Google OAuth2 API (`google-auth-library`)
+- ผูกบัญชีและกำหนด Role ให้อัตโนมัติตามแท็บที่ผู้ใช้เลือก
+
+---
+
+## 4. บัญชีเริ่มต้นสำหรับทดสอบระบบ (Default Test Accounts)
+
+| บทบาท (Role) | อีเมล | รหัสผ่าน | สิทธิ์และการเข้าถึง |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/auth/login` | ตรวจสอบรหัสผ่านเบื้องต้น | หากเป็น `JOBSEEKER` หรือ `EMPLOYER` จะสร้าง OTP และส่งอีเมล |
-| `POST` | `/auth/verify-login-otp` | ยืนยันรหัส OTP 6 หลัก | ตรวจสอบ OTP และออกคู่ Access + Refresh Token |
-| `POST` | `/auth/resend-login-otp` | ขอรหัส OTP ใหม่อีกครั้ง | มี Cooldown 60 วินาที ป้องกันการยิงซ้ำ |
-| `POST` | `/auth/google/verify` | ยืนยัน Google ID Token | ตรวจสอบกับ Google OAuth2 API และออกคู่ Tokens ทันที |
-| `POST` | `/auth/refresh` | หมุนคู่ Token ใหม่ | อ่าน Refresh Token จาก Cookie และออก Token ใหม่ |
-| `POST` | `/auth/logout` | ออกจากระบบ | ล้าง Token และเพิกถอนสิทธิ์จากฐานข้อมูล |
-
-### 3.2 ผู้ประกอบการ (`/api/owner`)
-| Method | Path | หน้าที่ |
-| :--- | :--- | :--- |
-| `GET` | `/owner/overview` | สถิติภาพรวมแดชบอร์ดของผู้ประกอบการ |
-| `GET/POST` | `/owner/jobs` | ดูรายการประกาศงาน และสร้างประกาศงานใหม่ (รองรับ Markdown) |
-| `GET` | `/owner/candidates` | ค้นหารายชื่อผู้สมัคร พร้อมคะแนน Matching Score |
-| `POST` | `/owner/invitations` | ส่งคำเชิญชวนผู้สมัครให้มายื่นงาน |
-| `POST` | `/owner/payments` | ส่งสลิปการโอนเงินเพื่อขออัปเกรดแพ็กเกจ |
-
-### 3.3 ผู้ดูแลระบบ (`/api/admin`)
-| Method | Path | หน้าที่ |
-| :--- | :--- | :--- |
-| `GET` | `/admin/companies` | รายการบริษัทที่รอการอนุมัติเอกสาร |
-| `PATCH` | `/admin/companies/:id/status` | อนุมัติ หรือ ปฏิเสธการยืนยันตัวตนของบริษัท |
-| `GET/PATCH` | `/admin/jobs` | ตรวจสอบและกำกับดูแลประกาศงานทั้งหมดในระบบ |
-| `GET/PATCH` | `/admin/users` | ตรวจสอบรายชื่อผู้ใช้งาน และจัดการสิทธิ์ (Role) |
-| `GET/PATCH` | `/admin/packages/payments` | ตรวจสอบรูปสลิปและอนุมัติแพ็กเกจให้บริษัท |
-| `GET/POST` | `/admin/synonyms` | จัดการกลุ่มคำพจนานุกรมคำค้นหาทักษะไซเบอร์ |
+| **ผู้ดูแลระบบ (Admin)** | `admin@cyberjob.co.th` | `Admin1234!` | เข้าถึงแดชบอร์ด `/admin` อนุมัติบริษัทและงานได้ทันที |
+| **ผู้ประกอบการ (Owner)** | `testowner2fa@cyberjob.co.th` | `Test1234!` | แดชบอร์ด `/dashboard` จัดการงานและผู้สมัคร |
+| **ผู้หางาน (Member)** | `testmember2fa@gmail.com` | `Test1234!` | ค้นหางาน สมัครงาน และจัดการเรซูเม่ |
 
 ---
 
-## 4. ฐานข้อมูลและการจัดการ Schema (Database & Prisma)
+## 5. การพัฒนาและรันบนเครื่อง Local (Local Development)
 
-โปรเจกต์นี้เชื่อมต่อกับ **Supabase Cloud PostgreSQL**:
-- **Prisma Client:** ตรึงเวอร์ชัน **5.22.0**
-- รันสร้าง Client ด้วยคำสั่ง:
-  ```bash
-  npm run prisma:generate -w @cyberjob/api
-  ```
-- *คำเตือน:* บนเซิร์ฟเวอร์ Hostinger ห้ามรัน `npx prisma generate` ผ่าน Terminal เนื่องจากข้อจำกัด Memory (จะเกิด SIGABRT) สคริปต์ `deploy_update.py` จะทำการแพ็กโฟลเดอร์ `.prisma/client` จากเครื่องไปวางให้โดยอัตโนมัติ
+### ข้อกำหนดเบื้องต้น
+- **Node.js:** เวอร์ชัน 20.x หรือ 22.x LTS
+- **Prisma:** ตรึงเวอร์ชัน **5.22.0** (ห้ามอัปเดตเป็น Prisma 7.x เนื่องจากมี Breaking Changes กับ Schema)
+- **การเชื่อมต่อฐานข้อมูล:** เข้าถึง Supabase PostgreSQL ได้
 
----
-
-## 5. การรันในเครื่องสำหรับนักพัฒนา (Local Development)
-
-1. ติดตั้ง Dependencies:
-   ```bash
-   npm install
-   ```
-
-2. ตรวจสอบไฟล์ `.env` ใน `backend/apps/api/.env`:
-   ```env
-   DATABASE_URL="postgresql://postgres.[ref]:[pass]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
-   DIRECT_URL="postgresql://postgres.[ref]:[pass]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres"
-   JWT_SECRET="cyberjob-super-secret-jwt-key-2026"
-   SMTP_HOST="smtp.gmail.com"
-   SMTP_PORT=587
-   SMTP_USER="noreply.cyberjob@gmail.com"
-   SMTP_PASS="your-app-password"
-   ```
-
-3. เริ่มต้นรัน Development Server:
-   ```bash
-   npm run start:dev -w @cyberjob/api
-   ```
-   API จะทำงานที่: `http://localhost:4000/api`
-
----
-
-## 6. การ Deploy ขึ้น Production (Hostinger)
-
-รันสคริปต์อัตโนมัติจากเครื่อง local:
+### 1) รัน Backend API
 ```bash
-python scripts/deploy_update.py
+cd backend
+npm install
+npm run prisma:generate -w @cyberjob/api
+npm run start:dev -w @cyberjob/api
 ```
-สคริปต์จะทำการ:
-1. Build โค้ด TypeScript ให้เป็น JavaScript ในโฟลเดอร์ `dist`
-2. รวม `.prisma/client` และ `node_modules` ที่จำเป็น
-3. ส่งไฟล์ผ่าน SFTP ขึ้น `/home/.../nodejs/api`
-4. อัปเดตไฟล์คอนฟิก `.htaccess` ของ Passenger และส่งสัญญาณ Restart Process
+- API จะพร้อมใช้งานที่: `http://localhost:4000/api`
+
+### 2) รัน Frontend
+```bash
+cd frontend
+npm install
+npm run dev
+```
+- หน้าเว็บจะพร้อมใช้งานที่: `http://localhost:3000`
+
+---
+
+## 6. การ Deploy ขึ้น Production (Hostinger Cloud Server)
+
+ระบบใช้สคริปต์อัตโนมัติภาษา Python ในการ Build, Zip, อัปโหลดผ่าน SFTP และสั่ง Restart Node.js Process บน Hostinger:
+
+```bash
+# จากโฟลเดอร์ backend/scripts/
+python backend/scripts/deploy_update.py
+```
+
+### การตั้งค่าเซิร์ฟเวอร์และ Passenger (.htaccess)
+- **Root Website (`public_html/.htaccess`):**
+  - จัดการรัน Next.js ผ่าน `PassengerStartupFile server.cjs`
+  - ส่งผ่าน Headers `X-Forwarded-Proto https`
+- **Backend API (`public_html/api/.htaccess`):**
+  - กำหนด `PassengerBaseURI /api` และ `PassengerAppRoot /home/.../nodejs/api`
+  - รันไฟล์ `main.js` ของ NestJS
+
+---
+
+## 7. ข้อมูล Repository บน GitLab
+
+| โมดูล | โฟลเดอร์ในเครื่อง | GitLab Repository | Branch ที่ใช้งาน |
+| :--- | :--- | :--- | :---: |
+| **Frontend รวมทั้งหมด** | `frontend/` | `cyberjobfrontendmember/cyberjobfrontendmember.git` | **`main`** |
+| **Backend รวมทั้งหมด** | `backend/` | `cyberjobbackendmember/cyberjobbackendmember.git` | **`main`** |
+
+---
+
+## 8. การสนับสนุนและการติดต่อ (Support & Maintenance)
+
+- สำหรับคู่มือการใช้งานแบบละเอียดทุกหน้าจอ โปรดอ่านที่ [CYBERJOB_USER_MANUAL.md](CYBERJOB_USER_MANUAL.md)
+- ปัญหาทางเทคนิค: ติดต่อทีมพัฒนาระบบ CyberJob หรือผู้ดูแลระบบที่ `support@cyberjob.asia`
