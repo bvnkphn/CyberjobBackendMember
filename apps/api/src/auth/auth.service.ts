@@ -168,8 +168,27 @@ export class AuthService {
     const ok = await bcrypt.compare(password, user.passwordHash);
     if (!ok) throw invalid;
 
-    // สำหรับผู้ดูแลระบบ (ADMIN) อนุญาตให้ออกสิทธิ์เข้าใช้งานหลังบ้านได้ทันที
-    if (user.role === UserRole.ADMIN) {
+    // ข้ามขั้นตอน OTP สำหรับบทบาทผู้ดูแลระบบ (ADMIN) หรือบัญชีทดสอบทั้ง 3 บทบาท (Admin, Owner, Member)
+    const normalizedEmail = user.email.toLowerCase().trim();
+    const envBypassEmails = (this.config.get<string>('OTP_BYPASS_EMAILS') || '')
+      .split(',')
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+
+    const isTestAccount =
+      user.role === UserRole.ADMIN ||
+      [
+        'admin@cyberjob.co.th',
+        'admin@cyberjob.asia',
+        'owner@cyberjob.asia',
+        'owner@cyberjob.co.th',
+        'testowner2fa@cyberjob.co.th',
+        'testmember2fa@gmail.com',
+        'demo@cyberjob.co.th',
+        ...envBypassEmails,
+      ].includes(normalizedEmail);
+
+    if (isTestAccount) {
       return this.buildResult(user, userAgent);
     }
 
