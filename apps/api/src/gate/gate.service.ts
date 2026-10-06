@@ -9,6 +9,20 @@ export class GateService {
 
   async save(userId: string, dto: SaveGateDto) {
     await this.assertJobseeker(userId);
+    const existing = await this.prisma.candidateProfile.findUnique({ where: { userId } });
+    const sections = this.sections(existing?.sections);
+    sections.personal = {
+      ...(sections.personal || {}),
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      address: dto.address,
+    };
+    sections.desiredJob = {
+      ...(sections.desiredJob || {}),
+      desiredPosition1: dto.desiredJobCategories[0] || (sections.desiredJob?.desiredPosition1 as string) || '',
+      desiredPosition2: dto.desiredJobCategories[1] || (sections.desiredJob?.desiredPosition2 as string) || '',
+    };
+
     const [, profile] = await this.prisma.$transaction([
       this.prisma.user.update({
         where: { id: userId },
@@ -21,8 +35,15 @@ export class GateService {
       }),
       this.prisma.candidateProfile.upsert({
         where: { userId },
-        create: { userId, ...dto },
-        update: dto,
+        create: {
+          userId,
+          ...dto,
+          sections: sections as Prisma.InputJsonValue,
+        },
+        update: {
+          ...dto,
+          sections: sections as Prisma.InputJsonValue,
+        },
       }),
     ]);
     return { ok: true as const, gateCompleted: true, profile };
@@ -85,6 +106,17 @@ export class GateService {
         } : {}),
       },
     });
+
+    if (section === 'personal' && (data.firstName || data.lastName)) {
+      const name = `${data.firstName ?? ''} ${data.lastName ?? ''}`.trim();
+      if (name) {
+        await this.prisma.user.update({
+          where: { id: userId },
+          data: { name },
+        });
+      }
+    }
+
     return { section, data, completion: this.calculateCompletion(sections), updatedAt: profile.updatedAt.toISOString() };
   }
 
@@ -115,7 +147,7 @@ export class GateService {
 
   private async assertJobseeker(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
-    if (user?.role !== 'JOBSEEKER') {
+    if (user?.role === 'EMPLOYER') {
       throw new ForbiddenException('บัญชีผู้ประกอบการต้องใช้ Gate ของ Owner');
     }
   }

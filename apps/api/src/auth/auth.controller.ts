@@ -86,8 +86,19 @@ export class AuthController {
   @HttpCode(200)
   async login(
     @Body() dto: LoginDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
   ) {
-    return this.auth.login(dto.email, dto.password);
+    const outcome = await this.auth.login(
+      dto.email,
+      dto.password,
+      req.headers['user-agent'],
+    );
+    if ('refreshToken' in outcome && 'result' in outcome) {
+      this.setRefreshCookie(res, outcome.refreshToken);
+      return outcome.result;
+    }
+    return outcome;
   }
 
   @Post('verify-login-otp')

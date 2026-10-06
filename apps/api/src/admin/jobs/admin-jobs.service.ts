@@ -22,6 +22,7 @@ export interface AdminJobRow {
   id: string;
   companyName: string;
   title: string;
+  description?: string;
   experienceLevel: ExperienceLevel;
   experienceMinYears: number;
   salaryMin: number;
@@ -68,6 +69,7 @@ export class AdminJobsService {
           id: row.id,
           companyName: row.company.name,
           title: row.title,
+          description: row.description,
           experienceLevel: row.experienceLevel as ExperienceLevel,
           experienceMinYears: EXPERIENCE_MIN_YEARS[row.experienceLevel as ExperienceLevel],
           salaryMin: row.salaryMin,

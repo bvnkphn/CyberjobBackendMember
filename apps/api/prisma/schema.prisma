@@ -118,6 +118,62 @@ enum PackagePlan {
   PLATINUM
 }
 
+/// ตารางคำนิยามแพ็กเกจที่ Admin กำหนดได้ (Admin Feature - Package Management)
+model PackageTierDefinition {
+  id              String   @id @default(cuid())
+  plan            PackagePlan @unique
+  name            String
+  price           Int      // บาทต่อรอบบิล
+  billingCycle    String   // "forever" | "month" | "year"
+  quotaJobs       Int      // จำนวนประกาศงานที่โพสต์ได้
+  highlightJobs   Int      // จำนวนประกาศงาน Hot Job
+  candidateViews  Int      // จำนวนการดูโปรไฟล์ผู้สมัคร
+  aiMatching      Boolean  @default(false)
+  inviteCandidates Boolean @default(false)
+  dedicatedSupport Boolean @default(false)
+  popular         Boolean  @default(false)
+  sortOrder       Int      @default(0)
+  features        String[] @default([]) // รายการ Feature ที่แสดงบน UI
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+/// การตั้งค่าระบบโดยรวม (Admin Feature - System Settings)
+model SystemSetting {
+  id                     String   @id @default("default")
+  maintenanceMode        Boolean  @default(false)
+  announcementTitle      String   @default("ระบบปิดปรับปรุงชั่วคราวเพื่ออัปเกรดความปลอดภัย")
+  announcementMsg        String   @default("ทีมงาน Cyber Job กำลังดำเนินการปรับปรุงระบบโครงสร้างพื้นฐานเพื่อเพิ่มประสิทธิภาพและความปลอดภัย ขออภัยในความไม่สะดวก ระบบจะกลับมาใช้งานได้ตามปกติในเร็ว ๆ นี้")
+  estimatedDowntime      String   @default("2 ชั่วโมง")
+  maintenanceStart       String?
+  maintenanceEnd         String?
+  newOrderAlert          Boolean  @default(true)
+  failedTransactionAlert Boolean  @default(true)
+  lowApiAlert            Boolean  @default(true)
+  dailyReportEmail       Boolean  @default(true)
+  alertRecipients        String   @default("admin@cyberjob.asia, support@cyberjob.asia")
+  dailyReportTime        String   @default("00:00")
+  platformName           String   @default("CyberJob Asia")
+  supportEmail           String   @default("support@cyberjob.asia")
+  supportPhone           String   @default("02-123-4567")
+  registrationEnabled    Boolean  @default(true)
+  jobPostingEnabled      Boolean  @default(true)
+  updatedAt              DateTime @updatedAt
+  updatedBy              String?
+}
+
+/// พจนานุกรมคำพ้องและทักษะที่เกี่ยวข้อง (Admin Feature - Synonym & Keyword Dictionary)
+model SynonymGroup {
+  id              String   @id @default(cuid())
+  name            String   @unique // Main Keyword
+  category        String   @default("General")
+  synonyms        String[] @default([])
+  autoAiGenerated Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  updatedBy       String?
+}
+
 enum PaymentMethod {
   PROMPTPAY
   BANK_TRANSFER
